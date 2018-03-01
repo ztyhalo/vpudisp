@@ -1,12 +1,22 @@
 //#include <QCoreApplication>
 #include "a9display/vpu_test.h"
 #include <string.h>
+#include <stdio.h>
 
 struct cmd_line gA9display;
 
 int main(int argc, char *argv[])
 {
     memset(&gA9display, 0x00 ,sizeof(struct cmd_line));
+    vpu_test_dbg_level = 0;
+    framebuf_init();
+    vpu_Init(NULL);
+    
+    sprintf(gA9display.input,"/opt/nsize.mjpg");
+    gA9display.src_scheme = 1;
+    gA9display.bs_mode = 1;
+    
+    
     while(1)
     {
         ;
