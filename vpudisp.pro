@@ -9,7 +9,7 @@ QT       -= core
 QT       -= gui
 
 TARGET = vpudisp
-CONFIG   += console
+
 CONFIG   -= app_bundle
 
 TEMPLATE = app
@@ -25,12 +25,10 @@ SOURCES += main.cpp \
     a9display/dec.c \
     a9display/display.c \
     a9display/fb.c \
-    udphdmi/vpu_read.c \
     a9display/utils.c
 
 HEADERS += \
     a9display/vpu_jpegtable.h \
     a9display/vpu_test.h \
     udphdmi/hdmiapp.h \
-    udpsocket/udp.h \
-    udphdmi/vpu_read.h
+    udpsocket/udp.h

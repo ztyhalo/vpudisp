@@ -22,7 +22,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include "vpu_test.h"
-#include "udphdmi/vpu_read.h"
 
 int quitflag;
 #ifdef _FSL_VTS_
@@ -30,6 +29,9 @@ int quitflag;
 extern FuncProbeDut g_pfnVTSProbe;
 #endif
 
+extern sem_t                show_sem;
+extern sem_t                dec_sem;
+extern int jpg_size;
 int vpu_v4l_performance_test;
 int vpu_test_dbg_level;
 
@@ -97,7 +99,6 @@ static int mjpg_seek_soi(struct decode *dec, u8 *buf, int size)
 end:
 	if (dec->mjpg_sc_state == 2) {
 		dprintf(4, "found %x%x\n", *(ptr - 2), *(ptr - 1));
-		info_msg("found %x%x\n", *(ptr - 2), *(ptr - 1));
 		return (int)(ptr - buf);
 	} else
 		return -1;
@@ -120,7 +121,6 @@ static int mjpg_read_chunk_till_soi(struct decode *dec)
 	buf = dec->mjpg_cached_bsbuf;
 
 	if (dec->mjpg_rd_ptr > 2){
-	info_msg( "mjpg_rd_ptr 0x%lx mjpg_wr_ptr 0x%lx\n", dec->mjpg_rd_ptr, dec->mjpg_wr_ptr);
 		memmove((void *)buf, (void *)(buf + dec->mjpg_rd_ptr - 2),
 				dec->mjpg_wr_ptr - (dec->mjpg_rd_ptr - 2));
 		dec->mjpg_wr_ptr -= dec->mjpg_rd_ptr - 2;
@@ -128,7 +128,6 @@ static int mjpg_read_chunk_till_soi(struct decode *dec)
 	}
 
 	dprintf(4, "mjpg_rd_ptr 0x%lx mjpg_wr_ptr 0x%lx\n", dec->mjpg_rd_ptr, dec->mjpg_wr_ptr);
-	info_msg( "mjpg_rd_ptr 0x%lx mjpg_wr_ptr 0x%lx\n", dec->mjpg_rd_ptr, dec->mjpg_wr_ptr);
 
 	while (1)
 	{
@@ -142,7 +141,6 @@ static int mjpg_read_chunk_till_soi(struct decode *dec)
 			} else if (nread == 0) {
 				if (dec->mjpg_eof) {
 					dprintf(4, "eof\n");
-					info_msg("eof\n");
 					return 0;
 				}
 				*(buf + dec->mjpg_wr_ptr) = 0xFF;
@@ -150,12 +148,10 @@ static int mjpg_read_chunk_till_soi(struct decode *dec)
 				*(buf + dec->mjpg_wr_ptr) = 0xD8;
 				dec->mjpg_wr_ptr++;
 				dprintf(4, "pad soi\n");
-				info_msg("pad soi\n");
 				dec->mjpg_eof = 1;
 			} else if (nread < MJPG_FILL_SIZE) {
 				dec->mjpg_wr_ptr += nread;
 				dprintf(4, "last piece of bs\n");
-				info_msg("last piece of bs\n");
 			} else
 				dec->mjpg_wr_ptr += nread;
 		}
@@ -164,12 +160,10 @@ static int mjpg_read_chunk_till_soi(struct decode *dec)
 		if (pos < 0)
 		{
 			dprintf(4, "soi not found\n");
-			info_msg("soi not found\n");
 			dec->mjpg_rd_ptr = dec->mjpg_wr_ptr;
 		} else {
 			dec->mjpg_rd_ptr += pos;
 			dprintf(4, "chunk size %lu\n", dec->mjpg_rd_ptr - 2);
-			info_msg("chunk size %lu\n", dec->mjpg_rd_ptr - 2);
 			memcpy((void *)dec->virt_bsbuf_addr, buf, dec->mjpg_rd_ptr - 2);
 			return dec->mjpg_rd_ptr;
 		}
@@ -185,14 +179,21 @@ static int mjpg_read_chunk(struct decode *dec)
 	int ret;
 #ifndef READ_WHOLE_FILE
 	/* read a chunk between 2 SOIs for MJPEG clip */
-	if (dec->mjpg_rd_ptr == 0) {
-		info_msg("dec mjpg_rd_ptr   %d\n", __LINE__);
-		ret = mjpg_read_chunk_till_soi(dec);
-		if (ret <= 0)
-			return ret;
-	}
-	ret = mjpg_read_chunk_till_soi(dec);
-	return ret;
+    if(dec->cmdl->src_scheme != PATH_BUF){
+        if (dec->mjpg_rd_ptr == 0) {
+            ret = mjpg_read_chunk_till_soi(dec);
+            if (ret <= 0)
+                return ret;
+        }
+        ret = mjpg_read_chunk_till_soi(dec);
+        return ret;
+    }else {
+        sem_wait(&show_sem);
+        memcpy((void *)dec->virt_bsbuf_addr, dec->cmdl->membuf, jpg_size);
+        dec->mjpg_rd_ptr =jpg_size +2;
+        sem_post(&dec_sem);
+        return dec->mjpg_rd_ptr;
+    }
 #else
 	/* read whole file for JPEG file */
 	ret = vpu_read(dec->cmdl, (void *)dec->virt_bsbuf_addr,
@@ -1150,8 +1151,8 @@ decoder_start(struct decode *dec)
 						break;
 				} else{
 					mjpgReadChunk = 1;
-					}
-					info_msg("chunksize %d %d\n",dec->mjpg_rd_ptr,  __LINE__);
+                }
+
 				decparam.chunkSize = dec->mjpg_rd_ptr - 2;
 				decparam.phyJpgChunkBase = dec->phy_bsbuf_addr;
 				decparam.virtJpgChunkBase = (unsigned char *)dec->virt_bsbuf_addr;
@@ -1169,7 +1170,6 @@ decoder_start(struct decode *dec)
 		}
 		gettimeofday(&tdec_begin, NULL);
 		ret = vpu_DecStartOneFrame(handle, &decparam);
-		info_msg("ret %d\n", ret );
 		if (ret == RETCODE_JPEG_EOS) {
 			info_msg(" JPEG bitstream is end\n");
 			break;

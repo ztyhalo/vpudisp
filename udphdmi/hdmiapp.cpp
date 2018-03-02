@@ -7,14 +7,16 @@
 
 
 
-sem_t                mgsem;
+sem_t                show_sem;
+extern sem_t                dec_sem;
+int                 jpg_size;
 
 #define TTL 64
 #define BUFF_SIZE 1025
 uint8_t rec_num = 0;
 
 
-extern char  imagedata[300][1020];
+ char  imagedata[300][1020];
 uint   imageleng;
 uint    imagetail;
 
@@ -125,7 +127,6 @@ void * hdmi_heart_pthread(void * arg)
             }
             else
             {
-//               printf("else %s\n", inet_ntoa(recaddr.sin_addr));
                client->hdmi_heart_ack();
             }
         }
@@ -151,18 +152,7 @@ void * hdmi_image_progress(void * arg)
 
     FILE * fp;
     HDMI_CLIENT * client = (HDMI_CLIENT *)arg;
-
-//    if((access("jpegtest",F_OK))==-1)
-//        {
-//            if(creat("jpegtest",0755)<0){
-//                    qDebug("create file failure!\n");
-//                    return NULL;
-//            }
-//        }
-
-//     fp = ::fopen("jpegtest", "rb+");
-//     if(fp == NULL)
-//          qDebug("file open error!");
+    sem_init(&show_sem, 0, 0); //zty2018
 
     memset(buff, 0x00, sizeof(buff));
     memset(imagedata, 0x00, sizeof(imagedata));
@@ -180,17 +170,12 @@ void * hdmi_image_progress(void * arg)
             start_mark = 1;
             rec_num = 1;
             ttl_error = 0;
-//            if(-1 == (fseek(fp, 0, SEEK_SET)))
-//                qDebug("seek error\n");
-//            qDebug("write 1");
-//            ::fwrite(buff+4, 1, str_len-4, fp);
-            memcpy(imagedata[0], buff+4,  str_len-4);
 
+            memcpy(imagedata[0], buff+4,  str_len-4);
 
         }
         else if(start_mark)
         {
-//            qDebug("ttl %d!\n",  buff[3]);
             if(rec_num != buff[3])
             {
                 printf("ttl error %d %d!\n", rec_num, buff[3]);
@@ -198,27 +183,7 @@ void * hdmi_image_progress(void * arg)
             }
             rec_num++;
 
-//            if(-1 == (fseek(fp, buff[3] * (1024-4), SEEK_SET)))
-//                qDebug("seek error\n");
-
-//            if(buff[2] != 0)
-//            {
-//                for(int i = 0; i < str_len; i++)
-//                {
-//                    if(buff[4+i] == 0xff && buff[4+i+1] == 0xd9)
-//                    {
-//                        fwrite(buff+4+i, 1, 2, fp);
-//                        break;
-//                    }
-//                    fwrite(buff+4+i, 1, 1, fp);
-//                }
-//            }
-//            else
-            {
-//                fwrite(buff+4, 1, str_len -4, fp);
-                memcpy(imagedata[buff[3]], buff+4,  str_len-4);
-            }
-
+            memcpy(imagedata[buff[3]], buff+4,  str_len-4);
 
             if(buff[2] != 0)
             {
@@ -235,17 +200,12 @@ void * hdmi_image_progress(void * arg)
                         }
                     }
 
-//                    if(-1 == (fseek(fp, 0, SEEK_SET)))
-//                        qDebug("seek error\n");
-//                    fwrite(imagedata, 1020, buff[3], fp);
-//                    fwrite(imagedata[buff[3]], 1, end_leng+2, fp);
-//                    imageleng = 1020 *buff[3]  + end_leng +2;
-//                    imageleng = 1020 *(buff[3]+ 1);
                     imageleng = buff[3];
                     imagetail = end_leng +2;
-//                    client->hdmi_show();
+                    jpg_size = imageleng*1020+imagetail;
+                    sem_post(&show_sem);
                     client->hdmi_image.close_fd();
-                    sem_wait(&mgsem);
+                    sem_wait(&dec_sem);
                     client->hdmi_image.udp_class_init(2068);
                     client->hdmi_image.udp_mul_read_init("226.2.2.2");
                 }

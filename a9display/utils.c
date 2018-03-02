@@ -40,6 +40,8 @@ struct nethdr {
 	int len;
 };
 
+
+sem_t                dec_sem;
 int	/* write n bytes to a file descriptor */
 fwriten(int fd, void *vptr, size_t n)
 {
@@ -445,6 +447,11 @@ open_files(struct cmd_line *cmd)
 
 		info_msg("encoder sending on port %d\n", cmd->port);
 	}
+    else
+    {
+        sem_init(&dec_sem, 0, 0); //zty2018
+        info_msg("buf read\n");
+    }
 
 	return 0;
 }
@@ -977,4 +984,8 @@ void SaveQpReport(Uint32 *qpReportAddr, int picWidth, int picHeight,
 	}
 
 	fclose(fp);
+}
+void set_mem_buf_size(struct cmd_line * cdm, int size)
+{
+    cdm->memlen = size;
 }

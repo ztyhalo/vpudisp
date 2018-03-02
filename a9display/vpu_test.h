@@ -69,6 +69,7 @@ typedef unsigned char u8;
 #define PATH_FILE	1
 #define PATH_NET	2
 #define PATH_IPU	3
+#define PATH_BUF    4
 
 /* Test operations */
 #define ENCODE		1
@@ -199,6 +200,8 @@ struct cmd_line {
 	int fps;
 	int mapType;
 	int quantParam;
+    char *membuf; /*内存buf地址*/
+    int memlen;
 };
 
 struct decode {
@@ -280,7 +283,7 @@ struct encode {
 void framebuf_init(void);
 int fwriten(int fd, void *vptr, size_t n);
 int freadn(int fd, void *vptr, size_t n);
-//int vpu_read(struct cmd_line *cmd, char *buf, int n);
+int vpu_read(struct cmd_line *cmd, char *buf, int n);
 int vpu_write(struct cmd_line *cmd, char *buf, int n);
 void get_arg(char *buf, int *argc, char *argv[]);
 int open_files(struct cmd_line *cmd);
@@ -321,9 +324,11 @@ void decoder_close(struct decode *dec);
 int decoder_parse(struct decode *dec);
 int decoder_allocate_framebuffer(struct decode *dec);
 void decoder_free_framebuffer(struct decode *dec);
-
+int decode_test(void *arg);
 void SaveQpReport(Uint32 *qpReportAddr, int picWidth, int picHeight,
 		  int frameIdx, char *fileName);
+
+void set_mem_buf_size(struct cmd_line * cdm, int size);
 
 static inline int is_mx6x_mjpg(int fmt)
 {
