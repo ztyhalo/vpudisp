@@ -163,6 +163,8 @@ void * hdmi_image_progress(void * arg)
     printf("image start!");
 
     frame_mark.reset();
+     img_read = 0;
+     img_write = 0;
 
     while(1){
         //接收发送来的消息，因为之前已经将socket注册到组播中

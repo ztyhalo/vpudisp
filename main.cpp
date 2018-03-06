@@ -9,7 +9,7 @@ extern "C"
 #include "udphdmi/hdmiapp.h"
 
 //#define ZTY_TEST
-//extern char  imagedata[300][1020];
+
 extern char  imagedata[IMG_BUF_SIZE][300][1020];
 struct cmd_line gA9display;
 
@@ -19,9 +19,10 @@ int main(int argc, char *argv[])
     pthread_t heart_pid;
 
     HDMI_CLIENT hdmi_c;
+    int reset_count = 0;
 
 
-
+    while(1){
     memset(&gA9display, 0x00 ,sizeof(struct cmd_line));
     vpu_test_dbg_level = 0;
     ::framebuf_init();
@@ -39,6 +40,7 @@ int main(int argc, char *argv[])
     open_files(&gA9display);
 
 #ifndef ZTY_TEST
+    if(reset_count ==0){
     if(pthread_create(&heart_pid, NULL, hdmi_heart_pthread, &hdmi_c) != 0)
     {
         printf("creat pthread failed!\n");
@@ -50,9 +52,18 @@ int main(int argc, char *argv[])
         printf("creat pthread failed!\n");
         return -1;
     }
+    }
 #endif
+//    while(1){
     decode_test(&gA9display);
+//    }
     close_files(&gA9display);
      vpu_UnInit();
+      pthread_cancel(pid);
+      pthread_join(pid,NULL);
+      pthread_cancel(heart_pid);
+      pthread_join(heart_pid,NULL);
+      reset_count++;
+    }
 
 }

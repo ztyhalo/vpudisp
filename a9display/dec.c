@@ -1150,14 +1150,16 @@ decoder_start(struct decode *dec)
 		if (cpu_is_mx6x() && (dec->cmdl->format == STD_MJPG)) {
 			if (dec->mjpgLineBufferMode) {
 				/* First chunk is already read before vpu_DecGetInitialInfo */
-				if (mjpgReadChunk) {
+                if (mjpgReadChunk) {
 					ret = mjpg_read_chunk(dec);
 					if (ret < 0)
 						return ret;
-					else if (ret == 0)
+                    else if (ret == 0){
+                        err_msg("mjpg read error!\n");
 						break;
-				} else{
-					mjpgReadChunk = 1;
+                    }
+                } else{
+                    mjpgReadChunk = 1;
                 }
 
 				decparam.chunkSize = dec->mjpg_rd_ptr - 2;
@@ -1277,8 +1279,10 @@ decoder_start(struct decode *dec)
 							(outinfo.numOfErrMBs & 0x00000FFF),
 							decIndex);
 			}
-			if (quitflag)
+            if (quitflag){
+                err_msg("%d\n", __LINE__);
 				break;
+            }
 			else
 				continue;
 		}
@@ -1295,8 +1299,10 @@ decoder_start(struct decode *dec)
 				return -1;
 			}
 
-			if (quitflag)
+            if (quitflag){
+                err_msg("%d\n", __LINE__);
 				break;
+            }
 			else
 				continue;
 		}
@@ -1412,12 +1418,15 @@ decoder_start(struct decode *dec)
 			 (outinfo.prescanresult != 0) && !cpu_is_mx6x())
 			decodefinish = 1;
 
-		if (decodefinish && (!(rot_en || dering_en || tiled2LinearEnable)))
+        if (decodefinish && (!(rot_en || dering_en || tiled2LinearEnable))){
+            err_msg("%d\n", __LINE__);
 			break;
+        }
 
 		if (!cpu_is_mx6x() && (outinfo.prescanresult == 0) &&
 		    (decparam.prescanEnable == 1)) {
 			if (eos) {
+                err_msg("%d\n", __LINE__);
 				break;
 			} else {
 				int fillsize = 0;
@@ -1442,15 +1451,19 @@ decoder_start(struct decode *dec)
 					return -1;
 				}
 
-				if (eos)
+                if (eos){
+                    err_msg("%d\n", __LINE__);
 					break;
+                }
 				else
 					continue;
 			}
 		}
 
-		if (quitflag)
+        if (quitflag){
+            err_msg("%d\n", __LINE__);
 			break;
+        }
 
 		if(outinfo.indexFrameDecoded >= 0) {
 			/* We MUST be careful of sequence param change (resolution change, etc)
@@ -1577,8 +1590,10 @@ decoder_start(struct decode *dec)
 		}
 
 		frame_id++;
-		if ((count != 0) && (frame_id >= count))
+        if ((count != 0) && (frame_id >= count)){
+            err_msg("%d\n", __LINE__);
 			break;
+        }
 
 		if (dec->cmdl->src_scheme == PATH_NET) {
 			err = dec_fill_bsbuffer(handle,	dec->cmdl,
@@ -1596,8 +1611,10 @@ decoder_start(struct decode *dec)
 		if (delay_ms && strtol(delay_ms, &endptr, 10))
 			usleep(strtol(delay_ms,&endptr, 10) * 1000);
 
-		if (decodefinish)
+        if (decodefinish){
+            err_msg("%d\n", __LINE__);
 			break;
+        }
 	}
 
 	if (totalNumofErrMbs) {
@@ -2473,30 +2490,30 @@ decode_test(void *arg)
 	if (dec->cmdl->src_scheme == PATH_NET)
 		fillsize = 1024;
 
-	if (cpu_is_mx6x() && (dec->cmdl->format == STD_MJPG) && dec->mjpgLineBufferMode) {
-		info_msg("first read   %d\n", __LINE__);
-		ret = mjpg_read_chunk(dec);
-		if (ret < 0)
-			goto err1;
-		else if (ret == 0) {
-			err_msg("no pic in the clip\n");
-			ret = -1;
-			goto err1;
-		}
-	} else {
-		ret = dec_fill_bsbuffer(dec->handle, cmdl,
-				dec->virt_bsbuf_addr,
-				(dec->virt_bsbuf_addr + STREAM_BUF_SIZE),
-				dec->phy_bsbuf_addr, fillsize, &eos, &fill_end_bs);
+    if (cpu_is_mx6x() && (dec->cmdl->format == STD_MJPG) && dec->mjpgLineBufferMode) {
+        info_msg("first read   %d\n", __LINE__);
+        ret = mjpg_read_chunk(dec);
+        if (ret < 0)
+            goto err1;
+        else if (ret == 0) {
+            err_msg("no pic in the clip\n");
+            ret = -1;
+            goto err1;
+        }
+    } else {
+        ret = dec_fill_bsbuffer(dec->handle, cmdl,
+                dec->virt_bsbuf_addr,
+                (dec->virt_bsbuf_addr + STREAM_BUF_SIZE),
+                dec->phy_bsbuf_addr, fillsize, &eos, &fill_end_bs);
 
-		if (fill_end_bs)
-			err_msg("Update 0 before seqinit, fill_end_bs=%d\n", fill_end_bs);
+        if (fill_end_bs)
+            err_msg("Update 0 before seqinit, fill_end_bs=%d\n", fill_end_bs);
 
-		if (ret < 0) {
-			err_msg("dec_fill_bsbuffer failed\n");
-			goto err1;
-		}
-	}
+        if (ret < 0) {
+            err_msg("dec_fill_bsbuffer failed\n");
+            goto err1;
+        }
+    }
 	cmdl->complete = 0;
 
 #ifndef _FSL_VTS_
@@ -2543,6 +2560,7 @@ decode_test(void *arg)
 
 	/* start decoding */
 	ret = decoder_start(dec);
+    err_msg("decoder end ret is %d\n", ret);
 err1:
 	decoder_close(dec);
 	/* free the frame buffers */
