@@ -4,6 +4,8 @@
 //#include <QObject>
 #include "udpsocket/udp.h"
 
+#define IMG_BUF_SIZE 6
+
 class OUDP_CLASS
 {
 public:

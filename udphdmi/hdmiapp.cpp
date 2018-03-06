@@ -3,20 +3,24 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <semaphore.h>
+#include <bitset>
 
 
 
 
 sem_t                show_sem;
 extern sem_t                dec_sem;
-int                 jpg_size;
+int                 jpg_size[IMG_BUF_SIZE];
 
 #define TTL 64
 #define BUFF_SIZE 1025
-uint8_t rec_num = 0;
+
+int rec_num = 0;
 
 
- char  imagedata[300][1020];
+ char  imagedata[IMG_BUF_SIZE][300][1020];
+ int  img_read;
+ int  img_write;
 uint   imageleng;
 uint    imagetail;
 
@@ -142,79 +146,87 @@ void * hdmi_image_progress(void * arg)
     //每次读到的字符串长度
     int str_len;
     int start_mark = 0;
-    int ttl_error = 0;
+    int ttl = 0;
     int end_leng = 0;
+
 
 
     //用于保存数据的字符缓冲
     uint8_t  buff[BUFF_SIZE];
+    std::bitset<300> frame_mark;
 
-
-    FILE * fp;
     HDMI_CLIENT * client = (HDMI_CLIENT *)arg;
     sem_init(&show_sem, 0, 0); //zty2018
 
     memset(buff, 0x00, sizeof(buff));
     memset(imagedata, 0x00, sizeof(imagedata));
     printf("image start!");
+
+    frame_mark.reset();
+
     while(1){
         //接收发送来的消息，因为之前已经将socket注册到组播中
-        str_len= client->hdmi_image.udp_read(buff,1024);
-        if(str_len<0){
-            printf("read error!");
-            break;
-        }
-//        qDebug("start_mark %d buff[3] %d", start_mark, buff[3]);
-        if(start_mark == 0 && buff[3] == 0)
-        {
-            start_mark = 1;
-            rec_num = 1;
-            ttl_error = 0;
 
-            memcpy(imagedata[0], buff+4,  str_len-4);
-
-        }
-        else if(start_mark)
-        {
-            if(rec_num != buff[3])
-            {
-                printf("ttl error %d %d!\n", rec_num, buff[3]);
-                ttl_error = 1;
+            str_len= client->hdmi_image.udp_read(buff,1024);
+            if(str_len<0){
+                printf("read error!");
+                break;
             }
-            rec_num++;
+            if(start_mark == 0 && buff[3] == 0)
+            {
+                start_mark = 1;
+                rec_num = 1;
+                ttl = 1;
+                frame_mark.reset();
+                frame_mark.set(0);
+                memcpy(imagedata[img_write][0], buff+4,  str_len-4);
 
-            memcpy(imagedata[buff[3]], buff+4,  str_len-4);
-
-            if(buff[2] != 0)
+            }
+            else if(start_mark)
             {
 
-                start_mark = 0;
-                rec_num = 0;
-                if(ttl_error == 0)
-                {
-                    for( end_leng = 0; end_leng < str_len; end_leng++)
+                ttl = frame_mark.test(buff[3]) ? (buff[3]+256) : buff[3];
+                if(ttl >= 300)
+                    printf("img buf over\n");
+                else{
+                    frame_mark.set(ttl);
+                    memcpy(imagedata[img_write][ttl], buff+4,  str_len-4);
+
+                    if(buff[2] != 0)  //结束
                     {
-                        if(buff[4+end_leng] == 0xff && buff[4+end_leng+1] == 0xd9)
+                        start_mark = 0;
+                        if(frame_mark.count() == ttl +1)
                         {
-                            break;
+                            for( end_leng = 0; end_leng < str_len; end_leng++)
+                            {
+                                if(buff[4+end_leng] == 0xff && buff[4+end_leng+1] == 0xd9)
+                                {
+                                    break;
+                                }
+                            }
+
+                            imageleng = ttl;
+                            imagetail = end_leng +2;
+                            jpg_size[img_write] = imageleng*1020+imagetail;
+                            img_write++;
+                            img_write %= IMG_BUF_SIZE;
+                            if(img_write == img_read){
+                                printf("img buf over img_write %d \n", img_write);
+                            }
+                            sem_post(&show_sem);
+                        }
+                        else
+                        {
+                            printf("ttl error cout %d buff %d\n", frame_mark.count(),  ttl+1);
                         }
                     }
-
-                    imageleng = buff[3];
-                    imagetail = end_leng +2;
-                    jpg_size = imageleng*1020+imagetail;
-                    sem_post(&show_sem);
-                    client->hdmi_image.close_fd();
-                    sem_wait(&dec_sem);
-                    client->hdmi_image.udp_class_init(2068);
-                    client->hdmi_image.udp_mul_read_init("226.2.2.2");
                 }
-            }
 
+            }
+            else
+                rec_num = 0;
         }
-        else
-            rec_num = 0;
-    }
+
 
 return 0;
 }

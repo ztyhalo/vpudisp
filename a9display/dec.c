@@ -23,15 +23,18 @@
 #include <string.h>
 #include "vpu_test.h"
 
+
 int quitflag;
 #ifdef _FSL_VTS_
 #include "dut_probes_vts.h"
 extern FuncProbeDut g_pfnVTSProbe;
 #endif
 
+
+extern  int  img_read;
 extern sem_t                show_sem;
 extern sem_t                dec_sem;
-extern int jpg_size;
+extern int jpg_size[6];
 int vpu_v4l_performance_test;
 int vpu_test_dbg_level;
 
@@ -189,9 +192,13 @@ static int mjpg_read_chunk(struct decode *dec)
         return ret;
     }else {
         sem_wait(&show_sem);
-        memcpy((void *)dec->virt_bsbuf_addr, dec->cmdl->membuf, jpg_size);
-        dec->mjpg_rd_ptr =jpg_size +2;
-        sem_post(&dec_sem);
+        memcpy((void *)dec->virt_bsbuf_addr, dec->cmdl->membuf + (img_read*300*1020), jpg_size[img_read]);
+        dec->mjpg_rd_ptr =jpg_size[img_read] +2;
+        img_read++;
+        img_read %= 6;
+//         printf("img_read is %d \n", img_read);
+
+//        sem_post(&dec_sem);
         return dec->mjpg_rd_ptr;
     }
 #else

@@ -9,8 +9,8 @@ extern "C"
 #include "udphdmi/hdmiapp.h"
 
 //#define ZTY_TEST
-extern char  imagedata[300][1020];
-
+//extern char  imagedata[300][1020];
+extern char  imagedata[IMG_BUF_SIZE][300][1020];
 struct cmd_line gA9display;
 
 int main(int argc, char *argv[])
