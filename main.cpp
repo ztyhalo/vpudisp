@@ -52,7 +52,7 @@ void * link_progress(void * arg)
                     link_status = 1;
                 }
             }else{
-                std::cout << "down!" <<std::endl;
+//               std::cout << "down!" <<std::endl;
                 if(link_status == 1)
                 {
                     link_status = 2;

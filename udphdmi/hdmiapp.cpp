@@ -325,7 +325,7 @@ void * hdmi_image_progress(void * arg)
 
                             printf("img buf over img_write %d %d \n", img_write, jpg_size[img_write]);
                         }else{
-                            std::cout << "post!" << std::endl;
+//                            std::cout << "post!" << std::endl;
                         sem_post(&show_sem);
                         }
                     }

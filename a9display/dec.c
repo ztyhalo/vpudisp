@@ -192,9 +192,9 @@ static int mjpg_read_chunk(struct decode *dec)
         ret = mjpg_read_chunk_till_soi(dec);
         return ret;
     }else {
-        info_msg("buf read\n");
+//        info_msg("buf read\n");
         sem_wait(&show_sem);
-        info_msg("reav \n");
+//        info_msg("reav \n");
         memcpy((void *)dec->virt_bsbuf_addr, dec->cmdl->membuf + (img_read*IMg_FRAME_SIZE*1020), jpg_size[img_read]);
         dec->mjpg_rd_ptr =jpg_size[img_read] +2;
         img_read++;
