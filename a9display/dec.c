@@ -30,11 +30,12 @@ int quitflag;
 extern FuncProbeDut g_pfnVTSProbe;
 #endif
 
-
+#define IMG_BUF_SIZE  6
+#define IMg_FRAME_SIZE 768
 extern  int  img_read;
 extern sem_t                show_sem;
 extern sem_t                dec_sem;
-extern int jpg_size[6];
+extern int jpg_size[IMG_BUF_SIZE];
 int vpu_v4l_performance_test;
 int vpu_test_dbg_level;
 
@@ -191,11 +192,13 @@ static int mjpg_read_chunk(struct decode *dec)
         ret = mjpg_read_chunk_till_soi(dec);
         return ret;
     }else {
+        info_msg("buf read\n");
         sem_wait(&show_sem);
-        memcpy((void *)dec->virt_bsbuf_addr, dec->cmdl->membuf + (img_read*300*1020), jpg_size[img_read]);
+        info_msg("reav \n");
+        memcpy((void *)dec->virt_bsbuf_addr, dec->cmdl->membuf + (img_read*IMg_FRAME_SIZE*1020), jpg_size[img_read]);
         dec->mjpg_rd_ptr =jpg_size[img_read] +2;
         img_read++;
-        img_read %= 6;
+        img_read %= IMG_BUF_SIZE;
 //         printf("img_read is %d \n", img_read);
 
 //        sem_post(&dec_sem);
@@ -2518,9 +2521,9 @@ decode_test(void *arg)
 
 #ifndef _FSL_VTS_
 	/* Not set fps when doing performance test default */
-        if ((dec->cmdl->fps == 0) && !vpu_v4l_performance_test)
+    if ((dec->cmdl->fps == 0) && !vpu_v4l_performance_test)
 	{
-		info_msg("dec fps \n");
+
                 dec->cmdl->fps = 30;
 	}
 #endif
