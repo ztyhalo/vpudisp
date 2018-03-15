@@ -26,6 +26,8 @@ int rec_num = 0;
 uint   imageleng;
 uint    imagetail;
 
+int gHeart_mark = 0;
+
 HDMI_CLIENT::HDMI_CLIENT()
 {
     hdmi_c_ttl = 0x924;
@@ -136,6 +138,7 @@ void * hdmi_heart_pthread(void * arg)
             }
             else
             {
+               gHeart_mark = 1;
                client->hdmi_heart_ack();
             }
         }

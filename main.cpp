@@ -16,15 +16,17 @@ extern "C"
 extern char  imagedata[IMG_BUF_SIZE][IMG_FRAME_SIZE][1020];
 extern sem_t                show_sem;
 struct cmd_line gA9display;
+extern int gHeart_mark;
 pthread_t pid;
 pthread_t heart_pid;
 pthread_t link_pid;
+int link_status = 0;
 
 void * link_progress(void * arg)
 {
     HDMI_CLIENT * client = (HDMI_CLIENT *)arg;
     int err;
-    int link_status = 0;
+
     struct ifreq ifr;
     memset(&ifr, 0x00, sizeof(ifr));
     memcpy(ifr.ifr_name, "eth0", 5);
@@ -52,7 +54,7 @@ void * link_progress(void * arg)
                     link_status = 1;
                 }
             }else{
-//               std::cout << "down!" <<std::endl;
+               std::cout << "down!" <<std::endl;
                 if(link_status == 1)
                 {
                     link_status = 2;
@@ -93,27 +95,37 @@ int main(int argc, char *argv[])
 
 #ifndef ZTY_TEST
 
-    if(pthread_create(&heart_pid, NULL, hdmi_heart_pthread, &hdmi_c) != 0)
-    {
-        printf("creat pthread failed!\n");
-        return -1;
-    }
-
-    if(pthread_create(&pid, NULL, hdmi_image_progress, &hdmi_c) != 0)
-    {
-        printf("creat pthread failed!\n");
-        return -1;
-    }
     if(pthread_create(&link_pid, NULL, link_progress, &hdmi_c) != 0)
     {
         printf("creat pthread failed!\n");
         return -1;
     }
-    if(reset_count !=0){
-        hdmi_c.hdmi_image.udp_class_init(2068);
-        hdmi_c.hdmi_image.udp_mul_read_init("226.2.2.2");
-        reset_count = 0;
+
+    if(pthread_create(&heart_pid, NULL, hdmi_heart_pthread, &hdmi_c) != 0)
+    {
+        printf("creat pthread failed!\n");
+        return -1;
     }
+    while(link_status == 0 || gHeart_mark == 0){
+        usleep(1000);
+    }
+
+
+    std::cout << "lint status " << link_status << " gheart mark " << gHeart_mark<< std::endl;
+    hdmi_c.hdmi_image.close_fd();
+    hdmi_c.hdmi_image.udp_class_init(2068);
+    hdmi_c.hdmi_image.udp_mul_read_init("226.2.2.2");
+    if(pthread_create(&pid, NULL, hdmi_image_progress, &hdmi_c) != 0)
+    {
+        printf("creat pthread failed!\n");
+        return -1;
+    }
+
+//    if(reset_count !=0){
+//        hdmi_c.hdmi_image.udp_class_init(2068);
+//        hdmi_c.hdmi_image.udp_mul_read_init("226.2.2.2");
+//        reset_count = 0;
+//    }
 
 #endif
 

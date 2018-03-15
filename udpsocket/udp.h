@@ -80,8 +80,10 @@ public:
      }
      void close_fd(void)
      {
-         if(socket_fd > 0)
+         if(socket_fd > 0){
              close(socket_fd);
+             socket_fd = 0;
+         }
      }
 
 };
